@@ -84,41 +84,17 @@
 //   return app
 // }
 
+
 import Fastify from 'fastify'
-import multipart from '@fastify/multipart'
-import swagger from '@fastify/swagger'
-import apiReference from '@scalar/fastify-api-reference'
-import { serializerCompiler, validatorCompiler, jsonSchemaTransform } from 'fastify-type-provider-zod'
+import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 import jwtPlugin from './plugins/jwt'
 import { entregadorRoutes } from './modules/entregador/routes/EntregadorRoutes'
+import 'dotenv/config'
 
 export const app = Fastify({ logger: true })
 
 app.setValidatorCompiler(validatorCompiler)
 app.setSerializerCompiler(serializerCompiler)
 
-app.register(multipart, {
-  limits: { fileSize: 5 * 1024 * 1024 }
-})
-
 app.register(jwtPlugin)
-
-app.register(swagger, {
-  openapi: {
-    info: {
-      title: 'API de Entregadores',
-      version: '1.0.0'
-    }
-  },
-  transform: jsonSchemaTransform
-})
-
-app.register(apiReference, {
-  routePrefix: '/docs'
-})
-
-app.get('/health', async () => {
-  return { status: 'ok' }
-})
-
 app.register(entregadorRoutes, { prefix: '/api/entregadores' })
