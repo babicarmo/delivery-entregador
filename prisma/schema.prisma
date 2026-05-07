@@ -1,0 +1,43 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Veiculo {
+  id         String      @id @db.Char(40)
+  tipo       String      @db.VarChar(50)
+  placa      String      @unique @db.VarChar(10)
+  modelo     String      @db.VarChar(100)
+  entregador Entregador?
+
+  @@map("veiculo")
+}
+
+enum StatusEntregador {
+  DISPONIVEL
+  EM_ENTREGA
+  INATIVO
+}
+
+model Entregador {
+  id         String           @id @db.Char(40)
+  nome       String           @db.VarChar(150)
+  telefone   String           @db.VarChar(20)
+  cpf        String           @unique @db.VarChar(14)
+  cnh        String           @unique @db.VarChar(20)
+  foto       Bytes?           @db.LongBlob
+  status     StatusEntregador @default(DISPONIVEL)
+  veiculo_id String           @unique @db.Char(40)
+  veiculo    Veiculo          @relation(fields: [veiculo_id], references: [id])
+
+  @@map("entregador")
+}
