@@ -37,6 +37,7 @@ model Entregador {
   foto       Bytes?           @db.LongBlob
   status     StatusEntregador @default(DISPONIVEL)
   veiculo_id String           @unique @db.Char(40)
+  pedidoAtualId String?       @db.Char(40)
   veiculo    Veiculo          @relation(fields: [veiculo_id], references: [id])
 
   @@map("entregador")

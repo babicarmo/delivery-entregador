@@ -1,5 +1,6 @@
 // import { v4 as uuidv4 } from 'uuid'
-// import prisma from '../../../config/prisma'
+// // Importação direta do PrismaClient para evitar erros de undefined
+// import { PrismaClient } from '@prisma/client'
 // import { NotFoundError, ConflictError, ValidationError } from '../../../utils/errors'
 // import {
 //   CriarEntregadorInput,
@@ -7,6 +8,9 @@
 //   AtualizarStatusInput
 // } from '../schema/EntregadorSchema'
 // import { formatarEntregador } from '../entregador.mapper'
+
+// // Instanciando o prisma aqui para garantir que ele esteja disponível em todas as funções
+// const prisma = new PrismaClient()
 
 // export class EntregadorService {
 
@@ -128,8 +132,7 @@
 
 
 import { v4 as uuidv4 } from 'uuid'
-// Importação direta do PrismaClient para evitar erros de undefined
-import { PrismaClient } from '@prisma/client'
+import prisma from '../../../config/prisma'
 import { NotFoundError, ConflictError, ValidationError } from '../../../utils/errors'
 import {
   CriarEntregadorInput,
@@ -137,9 +140,6 @@ import {
   AtualizarStatusInput
 } from '../schema/EntregadorSchema'
 import { formatarEntregador } from '../entregador.mapper'
-
-// Instanciando o prisma aqui para garantir que ele esteja disponível em todas as funções
-const prisma = new PrismaClient()
 
 export class EntregadorService {
 
@@ -177,7 +177,8 @@ export class EntregadorService {
           cnh: dados.cnh,
           foto: fotoBuffer || null,
           status: 'DISPONIVEL',
-          veiculo_id: veiculoId
+          veiculo_id: veiculoId,
+          pedidoAtualId: null
         },
         include: { veiculo: true }
       })
@@ -214,6 +215,15 @@ export class EntregadorService {
     return formatarEntregador(entregador)
   }
 
+  async buscarPorPedido(pedidoId: string) {
+    const entregador = await prisma.entregador.findFirst({
+      where: { pedidoAtualId: pedidoId },
+      include: { veiculo: true }
+    })
+    if (!entregador) throw new NotFoundError('Nenhum entregador encontrado para esse pedido')
+    return formatarEntregador(entregador)
+  }
+
   async atualizar(id: string, dados: AtualizarEntregadorInput, fotoBuffer?: Buffer) {
     const existe = await prisma.entregador.findUnique({ where: { id } })
     if (!existe) throw new NotFoundError('Entregador não encontrado')
@@ -240,6 +250,44 @@ export class EntregadorService {
       include: { veiculo: true }
     })
     return formatarEntregador(entregador)
+  }
+
+  async atribuirPedido(id: string, pedidoId: string) {
+    const entregador = await prisma.entregador.findUnique({ where: { id } })
+    if (!entregador) throw new NotFoundError('Entregador não encontrado')
+
+    if (entregador.status !== 'DISPONIVEL') {
+      throw new ValidationError('Entregador não está disponível')
+    }
+
+    const updated = await prisma.entregador.update({
+      where: { id },
+      data: {
+        status: 'EM_ENTREGA',
+        pedidoAtualId: pedidoId
+      },
+      include: { veiculo: true }
+    })
+    return formatarEntregador(updated)
+  }
+
+  async concluirEntrega(id: string) {
+    const entregador = await prisma.entregador.findUnique({ where: { id } })
+    if (!entregador) throw new NotFoundError('Entregador não encontrado')
+
+    if (entregador.status !== 'EM_ENTREGA') {
+      throw new ValidationError('Entregador não está em entrega')
+    }
+
+    const updated = await prisma.entregador.update({
+      where: { id },
+      data: {
+        status: 'DISPONIVEL',
+        pedidoAtualId: null
+      },
+      include: { veiculo: true }
+    })
+    return formatarEntregador(updated)
   }
 
   async deletar(id: string) {
